@@ -78,7 +78,7 @@ feature_spec.md       # This file - feature tracking
 - **Validate**: Successfully logs in (verify logged-in state)
 - **Commit**: "feat: sign in to WCCC with retry logic"
 
-### [ ] Feature 4: Navigate to Calendar Tab
+### [x] Feature 4: Navigate to Calendar Tab
 - Agent clicks Calendar tab
 - Screenshot calendar view
 - **Validate**: Calendar page loads
