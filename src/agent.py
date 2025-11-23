@@ -13,7 +13,7 @@ from .logger import setup_logger, get_screenshot_path, log_screenshot, get_curre
 
 logger = setup_logger()
 
-async def run_agent(task: str):
+async def run_agent(task: str, debug: bool = False):
     """Run the agent with a given task."""
     logger.info(f"Starting agent with task: {task}")
 
@@ -110,9 +110,26 @@ async def run_agent(task: str):
 
                 # Log the agent's response
                 if result.get("messages"):
-                    last_message = result["messages"][-1]
-                    if hasattr(last_message, 'content'):
-                        logger.info(f"Agent response: {last_message.content[:500]}...")
+                    if debug:
+                        # Log all messages in debug mode
+                        logger.info("=" * 40)
+                        logger.info("DEBUG: Full conversation history")
+                        logger.info("=" * 40)
+                        for i, msg in enumerate(result["messages"]):
+                            msg_type = type(msg).__name__
+                            if hasattr(msg, 'content'):
+                                content = msg.content if isinstance(msg.content, str) else str(msg.content)
+                                logger.info(f"[{i}] {msg_type}: {content}")
+                            if hasattr(msg, 'tool_calls') and msg.tool_calls:
+                                for tc in msg.tool_calls:
+                                    logger.info(f"    Tool call: {tc.get('name', 'unknown')} - {tc.get('args', {})}")
+                        logger.info("=" * 40)
+                    else:
+                        # Normal mode - just log last message summary
+                        last_message = result["messages"][-1]
+                        if hasattr(last_message, 'content'):
+                            content = last_message.content if isinstance(last_message.content, str) else str(last_message.content)
+                            logger.info(f"Agent response: {content[:500]}...")
 
                 logger.info("Agent completed task")
                 return result
@@ -187,7 +204,7 @@ async def navigate_to_calendar():
     logger.info("Calendar navigation completed")
     return result
 
-async def find_and_register_for_ride():
+async def find_and_register_for_ride(debug: bool = False):
     """Complete workflow: sign in, find target ride, and register."""
     from datetime import datetime, timedelta
 
@@ -225,6 +242,6 @@ async def find_and_register_for_ride():
     Be thorough in searching the calendar - check multiple days within the date range.
     """
 
-    result = await run_agent(task)
+    result = await run_agent(task, debug=debug)
     logger.info("Ride search and registration completed")
     return result

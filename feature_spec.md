@@ -118,6 +118,13 @@ feature_spec.md       # This file - feature tracking
 - **Validate**: Screenshots saved with descriptive names after each step
 - **Commit**: "feat: auto-save screenshots after each page load"
 
+### [x] Feature 10: Debug Mode and Help
+- Add `-d` / `--debug` flag for verbose AI response logging
+- Add `-h` / `--help` flag for command line help (via argparse)
+- Debug mode logs full conversation history and tool calls
+- **Validate**: `python -m src.main -h` shows help, `-d` shows full AI interaction
+- **Commit**: "feat: add debug mode for verbose AI response logging"
+
 ---
 
 ## Error Handling

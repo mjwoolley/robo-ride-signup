@@ -13,14 +13,19 @@ from src.logger import setup_logger
 
 logger = setup_logger()
 
+# Global debug flag
+_debug_mode = False
+
 async def run_once():
     """Run the agent once."""
     logger.info("=" * 50)
     logger.info("WCCC Ride Signup Agent - Starting")
+    if _debug_mode:
+        logger.info("Debug mode: ENABLED - Full AI responses will be logged")
     logger.info("=" * 50)
 
     try:
-        result = await find_and_register_for_ride()
+        result = await find_and_register_for_ride(debug=_debug_mode)
         logger.info("Agent run completed successfully")
         return result
     except Exception as e:
@@ -52,9 +57,31 @@ def run_scheduler():
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description="WCCC Ride Signup Agent")
-    parser.add_argument("--schedule", action="store_true", help="Run on hourly schedule")
+    parser = argparse.ArgumentParser(
+        description="WCCC Ride Signup Agent - Automatically registers for cycling rides",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python -m src.main              Run once
+  python -m src.main -d           Run once with debug logging
+  python -m src.main --schedule   Run on hourly schedule
+  python -m src.main -d -s        Run scheduled with debug logging
+        """
+    )
+    parser.add_argument(
+        "-s", "--schedule",
+        action="store_true",
+        help="Run on hourly schedule instead of once"
+    )
+    parser.add_argument(
+        "-d", "--debug",
+        action="store_true",
+        help="Enable debug mode - log full AI responses and tool calls"
+    )
     args = parser.parse_args()
+
+    # Set global debug mode
+    _debug_mode = args.debug
 
     if args.schedule:
         run_scheduler()

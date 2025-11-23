@@ -82,11 +82,28 @@ source venv/bin/activate
 python -m src.main
 ```
 
+### Run with Debug Logging
+```bash
+python -m src.main -d
+```
+
 ### Run on Hourly Schedule
 ```bash
-source venv/bin/activate
 python -m src.main --schedule
 ```
+
+### Show Help
+```bash
+python -m src.main -h
+```
+
+### Command Line Options
+
+| Option | Description |
+|--------|-------------|
+| `-h, --help` | Show help message and exit |
+| `-d, --debug` | Enable debug mode - log full AI responses and tool calls |
+| `-s, --schedule` | Run on hourly schedule instead of once |
 
 ## Project Structure
 
