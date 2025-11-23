@@ -1,7 +1,9 @@
 import asyncio
 import json
+import os
+from typing import Any
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.tools import StructuredTool
+from langchain_core.tools import tool
 from langgraph.prebuilt import create_react_agent
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
@@ -11,37 +13,15 @@ from .logger import setup_logger, get_screenshot_path, log_screenshot
 
 logger = setup_logger()
 
-def create_mcp_tool(name: str, description: str, input_schema: dict, session: ClientSession):
-    """Create a LangChain tool from an MCP tool definition."""
-
-    async def call_tool(**kwargs):
-        result = await session.call_tool(name, kwargs)
-        # Extract text content from result
-        if result.content:
-            texts = [c.text for c in result.content if hasattr(c, 'text')]
-            return "\n".join(texts) if texts else str(result.content)
-        return "Tool executed successfully"
-
-    # Build parameters from schema
-    properties = input_schema.get("properties", {})
-    required = input_schema.get("required", [])
-
-    return StructuredTool.from_function(
-        func=lambda **kwargs: asyncio.get_event_loop().run_until_complete(call_tool(**kwargs)),
-        coroutine=call_tool,
-        name=name,
-        description=description,
-        args_schema=None,  # Will use kwargs
-    )
-
 async def run_agent(task: str):
     """Run the agent with a given task."""
     logger.info(f"Starting agent with task: {task}")
 
     # Set up MCP server parameters for Playwright
+    output_dir = os.path.join(os.path.dirname(__file__), "..", "logs", "screenshots")
     server_params = StdioServerParameters(
         command="npx",
-        args=["@playwright/mcp@latest", "--browser", "chromium"],
+        args=["@playwright/mcp@latest", "--browser", "chromium", "--output-dir", output_dir],
     )
 
     async with stdio_client(server_params) as (read, write):
@@ -53,16 +33,52 @@ async def run_agent(task: str):
             tools_result = await session.list_tools()
             logger.info(f"Loaded {len(tools_result.tools)} tools from Playwright MCP")
 
-            # Convert MCP tools to LangChain tools
+            # Create tool functions dynamically
             tools = []
-            for tool in tools_result.tools:
-                lc_tool = create_mcp_tool(
-                    tool.name,
-                    tool.description or "",
-                    tool.inputSchema if hasattr(tool, 'inputSchema') else {},
-                    session
-                )
-                tools.append(lc_tool)
+            for mcp_tool in tools_result.tools:
+                tool_name = mcp_tool.name
+                tool_desc = mcp_tool.description or f"Tool: {tool_name}"
+
+                # Add schema info to description
+                input_schema = mcp_tool.inputSchema if hasattr(mcp_tool, 'inputSchema') else {}
+                if input_schema.get("properties"):
+                    schema_info = json.dumps(input_schema, indent=2)
+                    tool_desc = f"{tool_desc}\n\nParameters schema:\n{schema_info}"
+
+                # Create a closure to capture tool_name
+                def make_tool_func(name):
+                    async def tool_func(arguments: str = "{}") -> str:
+                        """Execute the MCP tool with JSON arguments."""
+                        try:
+                            args = json.loads(arguments) if arguments else {}
+                        except json.JSONDecodeError:
+                            args = {}
+
+                        logger.debug(f"Calling tool {name} with args: {args}")
+                        result = await session.call_tool(name, args)
+
+                        # Extract text content from result
+                        if result.content:
+                            texts = []
+                            for c in result.content:
+                                if hasattr(c, 'text'):
+                                    texts.append(c.text)
+                            return "\n".join(texts) if texts else str(result.content)
+                        return "Tool executed successfully"
+
+                    return tool_func
+
+                # Create the tool with decorator
+                tool_func = make_tool_func(tool_name)
+                tool_func.__name__ = tool_name
+                tool_func.__doc__ = f"{tool_desc}\n\nPass arguments as a JSON string."
+
+                decorated_tool = tool(tool_func)
+                tools.append(decorated_tool)
+
+            # Log tool names
+            tool_names = [t.name for t in tools]
+            logger.info(f"Available tools: {tool_names}")
 
             # Initialize Gemini LLM
             llm = ChatGoogleGenerativeAI(
@@ -75,14 +91,22 @@ async def run_agent(task: str):
             agent = create_react_agent(
                 llm,
                 tools,
-                prompt=get_system_prompt(),
             )
 
             try:
                 # Run the agent
                 result = await agent.ainvoke({
-                    "messages": [("user", task)]
+                    "messages": [
+                        ("system", get_system_prompt()),
+                        ("user", task)
+                    ]
                 })
+
+                # Log the agent's response
+                if result.get("messages"):
+                    last_message = result["messages"][-1]
+                    if hasattr(last_message, 'content'):
+                        logger.info(f"Agent response: {last_message.content[:500]}...")
 
                 logger.info("Agent completed task")
                 return result
@@ -137,4 +161,22 @@ async def sign_in_to_wccc():
 
     result = await run_agent(task)
     logger.info("WCCC sign-in completed")
+    return result
+
+async def navigate_to_calendar():
+    """Sign in to WCCC and navigate to the Calendar tab."""
+    task = f"""
+    1. Navigate to {WCCC_URL}
+    2. Sign in with:
+       - Username/Email: {WCCC_USERNAME}
+       - Password: {WCCC_PASSWORD}
+    3. After successful login, find and click on the "Calendar" tab/link
+    4. Take a screenshot of the calendar view
+    5. Report what you see on the calendar page
+
+    If any step fails, retry up to 3 times before giving up.
+    """
+
+    result = await run_agent(task)
+    logger.info("Calendar navigation completed")
     return result
