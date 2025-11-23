@@ -72,7 +72,7 @@ feature_spec.md       # This file - feature tracking
 - **Validate**: Page loads, screenshot captured
 - **Commit**: "feat: navigate to WCCC website"
 
-### [ ] Feature 3: Sign In
+### [x] Feature 3: Sign In
 - Agent finds login form and enters credentials from env
 - Implements retry logic: review page, retry up to 3 times, then log error with screenshots and stop
 - **Validate**: Successfully logs in (verify logged-in state)

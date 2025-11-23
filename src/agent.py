@@ -6,7 +6,7 @@ from langgraph.prebuilt import create_react_agent
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
-from .config import GOOGLE_API_KEY, get_system_prompt
+from .config import GOOGLE_API_KEY, WCCC_USERNAME, WCCC_PASSWORD, get_system_prompt
 from .logger import setup_logger, get_screenshot_path, log_screenshot
 
 logger = setup_logger()
@@ -114,4 +114,27 @@ async def navigate_to_wccc():
 
     result = await run_agent(task)
     logger.info("WCCC navigation completed")
+    return result
+
+async def sign_in_to_wccc():
+    """Navigate to WCCC and sign in with credentials."""
+    task = f"""
+    1. Navigate to {WCCC_URL}
+    2. Find the login form on the page
+    3. Enter these credentials:
+       - Username/Email: {WCCC_USERNAME}
+       - Password: {WCCC_PASSWORD}
+    4. Submit the login form
+    5. Take a screenshot after login attempt
+    6. Verify that you are now logged in (look for user profile, logout button, or welcome message)
+
+    IMPORTANT: If the login fails, review what went wrong from the page state, and retry.
+    You have up to 3 attempts to successfully log in.
+    After 3 failed attempts, report the error and stop.
+
+    Report whether login was successful and what you see on the page after login.
+    """
+
+    result = await run_agent(task)
+    logger.info("WCCC sign-in completed")
     return result
