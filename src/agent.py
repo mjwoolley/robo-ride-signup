@@ -100,3 +100,18 @@ async def test_agent():
     result = await run_agent(task)
     logger.info("Test completed successfully")
     return result
+
+# WCCC Website URL
+WCCC_URL = "https://www.wccyclingclub.com/content.aspx?page_id=0&club_id=939827"
+
+async def navigate_to_wccc():
+    """Navigate to the WCCC website and take a screenshot."""
+    task = f"""
+    Navigate to {WCCC_URL} and take a screenshot of the page.
+    Confirm that you have successfully loaded the WCCC Cycling Club website.
+    Report what you see on the homepage.
+    """
+
+    result = await run_agent(task)
+    logger.info("WCCC navigation completed")
+    return result

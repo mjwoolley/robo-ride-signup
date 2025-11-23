@@ -66,7 +66,7 @@ feature_spec.md       # This file - feature tracking
 - **Validate**: Agent starts, takes screenshot, logs with clickable link
 - **Commit**: "feat: initial Python project with Gemini agent, Playwright MCP, and logging"
 
-### [ ] Feature 2: Navigate to WCCC Site
+### [x] Feature 2: Navigate to WCCC Site
 - Agent navigates to WCCC homepage
 - Screenshot and log confirmation
 - **Validate**: Page loads, screenshot captured
