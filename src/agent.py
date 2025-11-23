@@ -117,12 +117,26 @@ async def run_agent(task: str, debug: bool = False):
                         logger.info("=" * 40)
                         for i, msg in enumerate(result["messages"]):
                             msg_type = type(msg).__name__
+                            if msg_type == "ToolMessage":
+                                continue  # Skip tool messages entirely
+
+                            # Color codes
+                            if msg_type == "SystemMessage":
+                                color = "\033[36m"  # Cyan
+                            elif msg_type == "HumanMessage":
+                                color = "\033[32m"  # Green
+                            elif msg_type == "AIMessage":
+                                color = "\033[35m"  # Magenta
+                            else:
+                                color = ""
+                            reset = "\033[0m" if color else ""
+
                             if hasattr(msg, 'content'):
                                 content = msg.content if isinstance(msg.content, str) else str(msg.content)
-                                logger.info(f"[{i}] {msg_type}: {content}")
+                                logger.info(f"{color}[{i}] {msg_type}: {content}{reset}")
                             if hasattr(msg, 'tool_calls') and msg.tool_calls:
                                 for tc in msg.tool_calls:
-                                    logger.info(f"    Tool call: {tc.get('name', 'unknown')} - {tc.get('args', {})}")
+                                    logger.info(f"{color}    Tool call: {tc.get('name', 'unknown')} - {tc.get('args', {})}{reset}")
                         logger.info("=" * 40)
                     else:
                         # Normal mode - just log last message summary
