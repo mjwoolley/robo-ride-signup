@@ -94,13 +94,16 @@ async def run_agent(task: str):
             )
 
             try:
-                # Run the agent
-                result = await agent.ainvoke({
-                    "messages": [
-                        ("system", get_system_prompt()),
-                        ("user", task)
-                    ]
-                })
+                # Run the agent with increased recursion limit for complex tasks
+                result = await agent.ainvoke(
+                    {
+                        "messages": [
+                            ("system", get_system_prompt()),
+                            ("user", task)
+                        ]
+                    },
+                    config={"recursion_limit": 100}
+                )
 
                 # Log the agent's response
                 if result.get("messages"):
@@ -179,4 +182,46 @@ async def navigate_to_calendar():
 
     result = await run_agent(task)
     logger.info("Calendar navigation completed")
+    return result
+
+async def find_and_register_for_ride():
+    """Complete workflow: sign in, find target ride, and register."""
+    from datetime import datetime, timedelta
+
+    today = datetime.now().strftime("%B %d, %Y")
+    end_date = (datetime.now() + timedelta(days=10)).strftime("%B %d, %Y")
+
+    task = f"""
+    Complete the following workflow to register for a cycling ride:
+
+    1. Navigate to {WCCC_URL}
+    2. Sign in with:
+       - Username/Email: {WCCC_USERNAME}
+       - Password: {WCCC_PASSWORD}
+    3. After successful login, click on the "Calendar" tab
+    4. Search the calendar for rides matching "B/B- Ride, Jenn"
+       - Look for rides from today ({today}) through the next 10 days ({end_date})
+       - Navigate through calendar dates as needed
+    5. For each matching ride found:
+       - Click on the ride to view details
+       - Check if you are already registered
+       - If NOT registered, click the register/sign-up button
+       - If ALREADY registered, note this and check the next matching ride
+    6. Take screenshots at key steps (calendar view, ride details, registration confirmation)
+    7. Report:
+       - Which rides were found
+       - Your registration status for each
+       - Which ride (if any) you registered for
+
+    IMPORTANT:
+    - If login fails, retry up to 3 times
+    - If no matching rides are found, report this and stop
+    - If all matching rides are already registered, report this
+    - Take screenshots to document your progress
+
+    Be thorough in searching the calendar - check multiple days within the date range.
+    """
+
+    result = await run_agent(task)
+    logger.info("Ride search and registration completed")
     return result

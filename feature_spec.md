@@ -84,14 +84,14 @@ feature_spec.md       # This file - feature tracking
 - **Validate**: Calendar page loads
 - **Commit**: "feat: navigate to Calendar tab"
 
-### [ ] Feature 5: Find Target Ride
+### [x] Feature 5: Find Target Ride
 - Agent searches calendar for "B/B- Ride, Jenn"
 - Date range: today through today + 10 days
 - Screenshot search results
 - **Validate**: Finds matching rides or logs "not found"
 - **Commit**: "feat: search for target ride on calendar"
 
-### [ ] Feature 6: Check Registration & Register
+### [x] Feature 6: Check Registration & Register
 - Agent checks registration status for each matching ride
 - Registers for the next unregistered ride
 - If already registered for first match, sign up for the next one
@@ -99,7 +99,7 @@ feature_spec.md       # This file - feature tracking
 - **Validate**: Full registration flow completes
 - **Commit**: "feat: check registration and register for next available ride"
 
-### [ ] Feature 7: Hourly Scheduler
+### [x] Feature 7: Hourly Scheduler
 - Add Python `schedule` library for hourly execution
 - Runs agent every hour continuously
 - **Validate**: Scheduler triggers agent correctly
