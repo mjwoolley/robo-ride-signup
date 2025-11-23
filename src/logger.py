@@ -9,6 +9,8 @@ SCREENSHOT_DIR = LOG_DIR / "screenshots"
 
 def setup_logger(name: str = "wccc-agent") -> logging.Logger:
     """Set up logger with file and console handlers."""
+    global _current_log_session
+
     # Ensure directories exist
     LOG_DIR.mkdir(exist_ok=True)
     SCREENSHOT_DIR.mkdir(exist_ok=True)
@@ -28,7 +30,8 @@ def setup_logger(name: str = "wccc-agent") -> logging.Logger:
 
     # File handler - new file per run
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    log_file = LOG_DIR / f"run_{timestamp}.log"
+    _current_log_session = f"run_{timestamp}"
+    log_file = LOG_DIR / f"{_current_log_session}.log"
     file_handler = logging.FileHandler(log_file)
     file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(formatter)
@@ -54,3 +57,10 @@ def log_screenshot(logger: logging.Logger, screenshot_path: Path, description: s
     """Log a screenshot with a clickable file:// link."""
     file_url = f"file://{screenshot_path.absolute()}"
     logger.info(f"{description}: {file_url}")
+
+# Store current log session for screenshot naming
+_current_log_session = ""
+
+def get_current_log_session() -> str:
+    """Get the current log session identifier for screenshot naming."""
+    return _current_log_session

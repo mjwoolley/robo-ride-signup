@@ -8,8 +8,8 @@ from langgraph.prebuilt import create_react_agent
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
-from .config import GOOGLE_API_KEY, WCCC_USERNAME, WCCC_PASSWORD, get_system_prompt
-from .logger import setup_logger, get_screenshot_path, log_screenshot
+from .config import GOOGLE_API_KEY, WCCC_USERNAME, WCCC_PASSWORD, RIDE_SEARCH_TERM, get_system_prompt
+from .logger import setup_logger, get_screenshot_path, log_screenshot, get_current_log_session
 
 logger = setup_logger()
 
@@ -94,11 +94,14 @@ async def run_agent(task: str):
             )
 
             try:
+                # Get log session for screenshot naming
+                log_session = get_current_log_session()
+
                 # Run the agent with increased recursion limit for complex tasks
                 result = await agent.ainvoke(
                     {
                         "messages": [
-                            ("system", get_system_prompt()),
+                            ("system", get_system_prompt(log_session)),
                             ("user", task)
                         ]
                     },
@@ -199,7 +202,7 @@ async def find_and_register_for_ride():
        - Username/Email: {WCCC_USERNAME}
        - Password: {WCCC_PASSWORD}
     3. After successful login, click on the "Calendar" tab
-    4. Search the calendar for rides matching "B/B- Ride, Jenn"
+    4. Search the calendar for rides matching "{RIDE_SEARCH_TERM}"
        - Look for rides from today ({today}) through the next 10 days ({end_date})
        - Navigate through calendar dates as needed
     5. For each matching ride found:

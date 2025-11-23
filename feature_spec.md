@@ -105,6 +105,19 @@ feature_spec.md       # This file - feature tracking
 - **Validate**: Scheduler triggers agent correctly
 - **Commit**: "feat: add hourly scheduler"
 
+### [x] Feature 8: Configurable Ride Search Criteria
+- Add `RIDE_SEARCH_TERM` environment variable
+- Allow users to customize which ride to search for
+- **Validate**: Agent uses search term from .env
+- **Commit**: "feat: configurable ride search criteria via env var"
+
+### [x] Feature 9: Auto-save Screenshots After Page Loads
+- Take screenshot after every page navigation
+- Use descriptive numbered filenames (e.g., "01_homepage.png", "02_login_form.png")
+- Include log session in context for organized screenshots
+- **Validate**: Screenshots saved with descriptive names after each step
+- **Commit**: "feat: auto-save screenshots after each page load"
+
 ---
 
 ## Error Handling
@@ -121,6 +134,6 @@ feature_spec.md       # This file - feature tracking
 
 ## Ride Search Logic
 - Search date range: today → today + 10 days
-- Find all "B/B- Ride, Jenn" matches
+- Find all rides matching `RIDE_SEARCH_TERM` (default: "B/B- Ride, Jenn")
 - Check registration status for each in chronological order
 - Register for first unregistered ride found
