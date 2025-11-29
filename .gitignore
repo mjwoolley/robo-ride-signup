@@ -95,3 +95,7 @@ jspm_packages/
 # Temporary folders
 tmp/
 temp/
+
+# Secrets
+env.yaml
+github-actions-key.json

@@ -1,0 +1,38 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv/
+env/
+.venv/
+*.egg-info/
+dist/
+build/
+
+# Logs (will be created fresh in container)
+logs/
+
+# Environment files (secrets managed via Cloud Run)
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+
+# Documentation
+*.md
+!deploy/*.md
+
+# Node modules (will be installed fresh)
+node_modules/

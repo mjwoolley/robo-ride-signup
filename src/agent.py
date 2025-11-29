@@ -21,7 +21,7 @@ async def run_agent(task: str, debug: bool = False):
     output_dir = os.path.join(os.path.dirname(__file__), "..", "logs", "screenshots")
     server_params = StdioServerParameters(
         command="npx",
-        args=["@playwright/mcp@latest", "--browser", "chromium", "--output-dir", output_dir],
+        args=["@playwright/mcp", "--browser", "chromium", "--output-dir", output_dir],
     )
 
     async with stdio_client(server_params) as (read, write):

@@ -125,6 +125,15 @@ feature_spec.md       # This file - feature tracking
 - **Validate**: `python -m src.main -h` shows help, `-d` shows full AI interaction
 - **Commit**: "feat: add debug mode for verbose AI response logging"
 
+### [ ] Feature 11: Google Cloud Run Deployment
+- Dockerfile with Python 3.12 + Playwright headless browser
+- GitHub Actions CI/CD pipeline for automated deployment
+- Cloud Scheduler for hourly job execution
+- Cloud Monitoring alerts on job failures (email notifications)
+- Deployment setup guide with step-by-step instructions
+- **Validate**: Push to main triggers deployment, job runs hourly, alerts on failure
+- **Commit**: "feat: add Google Cloud Run deployment with alerting"
+
 ---
 
 ## Error Handling

@@ -1,4 +1,5 @@
 import asyncio
+import os
 import sys
 import time
 from pathlib import Path
@@ -14,7 +15,7 @@ from src.logger import setup_logger
 logger = setup_logger()
 
 # Global debug flag
-_debug_mode = False
+_debug_mode = os.getenv("DEBUG", "").lower() == "true"
 
 async def run_once():
     """Run the agent once."""

@@ -1,0 +1,28 @@
+{
+    "displayName": "WCCC Ride Signup Job Failures",
+    "combiner": "OR",
+    "conditions": [
+        {
+            "displayName": "Job execution failed",
+            "conditionThreshold": {
+                "filter": "resource.type=\"cloud_run_job\" AND resource.labels.job_name=\"wccc-ride-signup\" AND metric.type=\"run.googleapis.com/job/completed_execution_count\" AND metric.labels.result=\"failed\"",
+                "comparison": "COMPARISON_GT",
+                "thresholdValue": 0,
+                "duration": "0s",
+                "aggregations": [
+                    {
+                        "alignmentPeriod": "300s",
+                        "perSeriesAligner": "ALIGN_COUNT"
+                    }
+                ]
+            }
+        }
+    ],
+    "documentation": {
+        "content": "WCCC Ride Signup Agent job failed. Check Cloud Run logs for details.",
+        "mimeType": "text/markdown"
+    },
+    "notificationChannels": [
+        "projects/gen-lang-client-0610397472/notificationChannels/3555468407783140638"
+    ]
+}
