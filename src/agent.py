@@ -57,25 +57,21 @@ async def run_agent(task: str, debug: bool = False):
     # Set up MCP server parameters for Playwright
     output_dir = os.path.join(os.path.dirname(__file__), "..", "logs", "screenshots")
 
-    # Pass Chromium flags for Cloud Run compatibility
-    chromium_flags = os.environ.get("CHROMIUM_FLAGS", "--no-sandbox --disable-dev-shm-usage --disable-gpu --disable-setuid-sandbox")
-
     server_params = StdioServerParameters(
         command="npx",
-        args=["@playwright/mcp", "--browser", "chromium", "--headless", "--output-dir", output_dir],
-        env={
-            **os.environ,
-            # Try to pass Chromium flags via environment variable
-            # This may or may not work depending on @playwright/mcp implementation
-            "PLAYWRIGHT_CHROMIUM_ARGS": chromium_flags,
-        }
+        args=[
+            "@playwright/mcp",
+            "--browser", "chromium",
+            "--headless",
+            "--no-sandbox",  # Critical for Cloud Run - disables sandboxing
+            "--output-dir", output_dir
+        ]
     )
 
     # Log environment state for debugging
     logger.info(f"Browser cache path: {os.environ.get('PLAYWRIGHT_BROWSERS_PATH', 'default')}")
     logger.info(f"Output directory: {output_dir}")
     logger.info(f"Working directory: {os.getcwd()}")
-    logger.info(f"Chromium flags: {chromium_flags}")
 
     logger.info(f"Starting Playwright MCP server with command: {server_params.command} {' '.join(server_params.args)}")
 
