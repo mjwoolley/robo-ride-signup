@@ -64,13 +64,18 @@ async def browser_navigate(url: str) -> str:
         url: The URL to navigate to
 
     Returns:
-        Success message with the current URL
+        Success message with the current URL or error description
     """
     page = await _get_page()
     logger.info(f"Navigating to: {url}")
-    await page.goto(url, wait_until="networkidle", timeout=30000)
-    logger.info(f"Successfully navigated to: {page.url}")
-    return f"Successfully navigated to {page.url}"
+    try:
+        await page.goto(url, wait_until="networkidle", timeout=30000)
+        logger.info(f"Successfully navigated to: {page.url}")
+        return f"Successfully navigated to {page.url}"
+    except Exception as e:
+        error_msg = f"Failed to navigate to '{url}': {str(e)}"
+        logger.warning(error_msg)
+        return error_msg
 
 @tool
 async def browser_click(element_selector: str) -> str:
@@ -80,13 +85,18 @@ async def browser_click(element_selector: str) -> str:
         element_selector: CSS selector or text to click on (e.g., 'button', 'text=Login', '#submit')
 
     Returns:
-        Success message
+        Success message or error description
     """
     page = await _get_page()
     logger.info(f"Clicking element: {element_selector}")
-    await page.click(element_selector, timeout=10000)
-    logger.info(f"Successfully clicked: {element_selector}")
-    return f"Successfully clicked element: {element_selector}"
+    try:
+        await page.click(element_selector, timeout=10000)
+        logger.info(f"Successfully clicked: {element_selector}")
+        return f"Successfully clicked element: {element_selector}"
+    except Exception as e:
+        error_msg = f"Failed to click element '{element_selector}': {str(e)}"
+        logger.warning(error_msg)
+        return error_msg
 
 @tool
 async def browser_fill(element_selector: str, text: str) -> str:
@@ -97,13 +107,18 @@ async def browser_fill(element_selector: str, text: str) -> str:
         text: Text to fill into the field
 
     Returns:
-        Success message
+        Success message or error description
     """
     page = await _get_page()
     logger.info(f"Filling element {element_selector} with text")
-    await page.fill(element_selector, text, timeout=10000)
-    logger.info(f"Successfully filled: {element_selector}")
-    return f"Successfully filled element: {element_selector}"
+    try:
+        await page.fill(element_selector, text, timeout=10000)
+        logger.info(f"Successfully filled: {element_selector}")
+        return f"Successfully filled element: {element_selector}"
+    except Exception as e:
+        error_msg = f"Failed to fill element '{element_selector}': {str(e)}"
+        logger.warning(error_msg)
+        return error_msg
 
 @tool
 async def browser_type(element_selector: str, text: str) -> str:
@@ -114,13 +129,18 @@ async def browser_type(element_selector: str, text: str) -> str:
         text: Text to type into the field
 
     Returns:
-        Success message
+        Success message or error description
     """
     page = await _get_page()
     logger.info(f"Typing into element: {element_selector}")
-    await page.type(element_selector, text, timeout=10000)
-    logger.info(f"Successfully typed into: {element_selector}")
-    return f"Successfully typed into element: {element_selector}"
+    try:
+        await page.type(element_selector, text, timeout=10000)
+        logger.info(f"Successfully typed into: {element_selector}")
+        return f"Successfully typed into element: {element_selector}"
+    except Exception as e:
+        error_msg = f"Failed to type into element '{element_selector}': {str(e)}"
+        logger.warning(error_msg)
+        return error_msg
 
 @tool
 async def browser_press_key(key: str) -> str:
@@ -130,13 +150,18 @@ async def browser_press_key(key: str) -> str:
         key: Key name (e.g., 'Enter', 'Tab', 'Escape')
 
     Returns:
-        Success message
+        Success message or error description
     """
     page = await _get_page()
     logger.info(f"Pressing key: {key}")
-    await page.keyboard.press(key)
-    logger.info(f"Successfully pressed key: {key}")
-    return f"Successfully pressed key: {key}"
+    try:
+        await page.keyboard.press(key)
+        logger.info(f"Successfully pressed key: {key}")
+        return f"Successfully pressed key: {key}"
+    except Exception as e:
+        error_msg = f"Failed to press key '{key}': {str(e)}"
+        logger.warning(error_msg)
+        return error_msg
 
 @tool
 async def browser_screenshot(name: str = "screenshot") -> str:
@@ -146,32 +171,40 @@ async def browser_screenshot(name: str = "screenshot") -> str:
         name: Optional name for the screenshot file
 
     Returns:
-        Path to the saved screenshot
+        Path to the saved screenshot or error description
     """
     page = await _get_page()
-    screenshot_path = get_screenshot_path(name)
-
-    logger.info(f"Taking screenshot: {screenshot_path}")
-    await page.screenshot(path=screenshot_path, full_page=True)
-    log_screenshot(logger, screenshot_path)
-    logger.info(f"Screenshot saved: {screenshot_path}")
-
-    return f"Screenshot saved to {screenshot_path}"
+    try:
+        screenshot_path = get_screenshot_path(name)
+        logger.info(f"Taking screenshot: {screenshot_path}")
+        await page.screenshot(path=screenshot_path, full_page=True)
+        log_screenshot(logger, screenshot_path)
+        logger.info(f"Screenshot saved: {screenshot_path}")
+        return f"Screenshot saved to {screenshot_path}"
+    except Exception as e:
+        error_msg = f"Failed to take screenshot '{name}': {str(e)}"
+        logger.warning(error_msg)
+        return error_msg
 
 @tool
 async def browser_get_content() -> str:
     """Get the text content of the current page.
 
     Returns:
-        Text content of the page (first 5000 characters)
+        Text content of the page (first 5000 characters) or error description
     """
     page = await _get_page()
     logger.info("Getting page content")
-    content = await page.content()
-    # Return first 5000 chars to avoid overwhelming the LLM
-    truncated = content[:5000]
-    logger.info(f"Retrieved page content ({len(content)} chars, returning {len(truncated)})")
-    return truncated
+    try:
+        content = await page.content()
+        # Return first 5000 chars to avoid overwhelming the LLM
+        truncated = content[:5000]
+        logger.info(f"Retrieved page content ({len(content)} chars, returning {len(truncated)})")
+        return truncated
+    except Exception as e:
+        error_msg = f"Failed to get page content: {str(e)}"
+        logger.warning(error_msg)
+        return error_msg
 
 @tool
 async def browser_get_text(element_selector: str) -> str:
@@ -181,13 +214,18 @@ async def browser_get_text(element_selector: str) -> str:
         element_selector: CSS selector for the element
 
     Returns:
-        Text content of the element
+        Text content of the element or error description
     """
     page = await _get_page()
     logger.info(f"Getting text from element: {element_selector}")
-    text = await page.text_content(element_selector, timeout=10000)
-    logger.info(f"Retrieved text from {element_selector}: {text[:100]}...")
-    return text or ""
+    try:
+        text = await page.text_content(element_selector, timeout=10000)
+        logger.info(f"Retrieved text from {element_selector}: {text[:100] if text else 'None'}...")
+        return text or ""
+    except Exception as e:
+        error_msg = f"Failed to get text from element '{element_selector}': {str(e)}"
+        logger.warning(error_msg)
+        return error_msg
 
 @tool
 async def browser_wait_for_selector(element_selector: str, timeout_ms: int = 10000) -> str:
@@ -198,13 +236,18 @@ async def browser_wait_for_selector(element_selector: str, timeout_ms: int = 100
         timeout_ms: Maximum time to wait in milliseconds (default 10000)
 
     Returns:
-        Success message
+        Success message or error description
     """
     page = await _get_page()
     logger.info(f"Waiting for element: {element_selector}")
-    await page.wait_for_selector(element_selector, timeout=timeout_ms)
-    logger.info(f"Element appeared: {element_selector}")
-    return f"Element appeared: {element_selector}"
+    try:
+        await page.wait_for_selector(element_selector, timeout=timeout_ms)
+        logger.info(f"Element appeared: {element_selector}")
+        return f"Element appeared: {element_selector}"
+    except Exception as e:
+        error_msg = f"Failed to find element '{element_selector}' within {timeout_ms}ms: {str(e)}"
+        logger.warning(error_msg)
+        return error_msg
 
 @tool
 async def browser_is_visible(element_selector: str) -> str:
@@ -234,13 +277,18 @@ async def browser_evaluate(script: str) -> str:
         script: JavaScript code to execute
 
     Returns:
-        Result of the script execution (converted to string)
+        Result of the script execution (converted to string) or error description
     """
     page = await _get_page()
     logger.info(f"Evaluating JavaScript: {script[:100]}...")
-    result = await page.evaluate(script)
-    logger.info(f"JavaScript result: {result}")
-    return str(result)
+    try:
+        result = await page.evaluate(script)
+        logger.info(f"JavaScript result: {result}")
+        return str(result)
+    except Exception as e:
+        error_msg = f"Failed to evaluate JavaScript: {str(e)}"
+        logger.warning(error_msg)
+        return error_msg
 
 # List of all browser tools
 BROWSER_TOOLS = [
