@@ -149,12 +149,11 @@ async def browser_screenshot(name: str = "screenshot") -> str:
         Path to the saved screenshot
     """
     page = await _get_page()
-    log_session = get_current_log_session()
-    screenshot_path = get_screenshot_path(name, log_session)
+    screenshot_path = get_screenshot_path(name)
 
     logger.info(f"Taking screenshot: {screenshot_path}")
     await page.screenshot(path=screenshot_path, full_page=True)
-    log_screenshot(screenshot_path)
+    log_screenshot(logger, screenshot_path)
     logger.info(f"Screenshot saved: {screenshot_path}")
 
     return f"Screenshot saved to {screenshot_path}"
