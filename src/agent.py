@@ -70,6 +70,10 @@ async def browser_navigate(url: str) -> str:
     logger.info(f"Navigating to: {url}")
     try:
         await page.goto(url, wait_until="networkidle", timeout=30000)
+
+        # Additional wait for dynamic content to load
+        await page.wait_for_timeout(1000)
+
         logger.info(f"Successfully navigated to: {page.url}")
         return f"Successfully navigated to {page.url}"
     except Exception as e:
@@ -90,7 +94,18 @@ async def browser_click(element_selector: str) -> str:
     page = await _get_page()
     logger.info(f"Clicking element: {element_selector}")
     try:
-        await page.click(element_selector, timeout=10000)
+        # Wait for element to be visible and attached to DOM
+        await page.wait_for_selector(element_selector, state="visible", timeout=15000)
+
+        # Scroll element into view if needed
+        await page.locator(element_selector).scroll_into_view_if_needed()
+
+        # Click with force=True to handle elements that might be covered
+        await page.click(element_selector, timeout=10000, force=True)
+
+        # Small delay to allow click to process
+        await page.wait_for_timeout(500)
+
         logger.info(f"Successfully clicked: {element_selector}")
         return f"Successfully clicked element: {element_selector}"
     except Exception as e:
@@ -112,7 +127,24 @@ async def browser_fill(element_selector: str, text: str) -> str:
     page = await _get_page()
     logger.info(f"Filling element {element_selector} with text")
     try:
+        # Wait for element to be visible and editable
+        await page.wait_for_selector(element_selector, state="visible", timeout=15000)
+
+        # Scroll element into view if needed
+        await page.locator(element_selector).scroll_into_view_if_needed()
+
+        # Click to focus the field first
+        await page.click(element_selector, timeout=10000)
+
+        # Clear existing content
+        await page.fill(element_selector, "", timeout=5000)
+
+        # Fill with new text
         await page.fill(element_selector, text, timeout=10000)
+
+        # Small delay to allow value to register
+        await page.wait_for_timeout(300)
+
         logger.info(f"Successfully filled: {element_selector}")
         return f"Successfully filled element: {element_selector}"
     except Exception as e:
