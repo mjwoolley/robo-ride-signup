@@ -574,7 +574,7 @@ async def run_agent(task: str, debug: bool = False):
 
         # Initialize Gemini LLM
         llm = ChatGoogleGenerativeAI(
-            model="gemini-2.5-flash",
+            model="gemini-2.0-flash-exp",
             google_api_key=GOOGLE_API_KEY,
             temperature=0,
         )
@@ -760,9 +760,9 @@ async def find_and_register_for_ride(debug: bool = False):
        - Take screenshot "02_login_page"
        - The page will navigate to a login URL - this is NORMAL, not an error
        - Fill TWO SEPARATE fields:
-         * User Name field: input[name='ctl00_ctl00_login_name']
+         * User Name field: #ctl00_ctl00_login_name
            Fill with: {WCCC_USERNAME}
-         * Password field: input[name='ctl00_ctl00_password']
+         * Password field: #ctl00_ctl00_password
            Fill with: {WCCC_PASSWORD}
        - Click submit button: #ctl00_ctl00_login_button (it's an <a> link, NOT an input!)
        - Take screenshot "03_logged_in"
