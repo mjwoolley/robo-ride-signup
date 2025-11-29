@@ -8,7 +8,7 @@ from langchain_core.tools import tool
 from langgraph.prebuilt import create_react_agent
 
 from .config import GOOGLE_API_KEY, WCCC_USERNAME, WCCC_PASSWORD, RIDE_SEARCH_TERM, get_system_prompt
-from .logger import setup_logger, get_screenshot_path, log_screenshot, get_current_log_session
+from .logger import setup_logger, get_screenshot_path, log_screenshot, get_current_log_session, get_current_screenshot_dir
 
 logger = setup_logger()
 
@@ -250,6 +250,25 @@ async def browser_wait_for_selector(element_selector: str, timeout_ms: int = 100
         return error_msg
 
 @tool
+async def browser_wait(seconds: int) -> str:
+    """Wait for a specified number of seconds. Use this when you need to wait for a page to finish loading or processing.
+
+    Args:
+        seconds: Number of seconds to wait (1-10)
+
+    Returns:
+        Success message
+    """
+    if seconds < 1 or seconds > 10:
+        return "Error: seconds must be between 1 and 10"
+
+    import asyncio
+    logger.info(f"Waiting {seconds} seconds...")
+    await asyncio.sleep(seconds)
+    logger.info(f"Wait complete ({seconds} seconds)")
+    return f"Waited {seconds} seconds"
+
+@tool
 async def browser_is_visible(element_selector: str) -> str:
     """Check if an element is visible on the page.
 
@@ -290,6 +309,167 @@ async def browser_evaluate(script: str) -> str:
         logger.warning(error_msg)
         return error_msg
 
+@tool
+async def browser_list_frames() -> str:
+    """List all iframes on the current page.
+
+    Returns:
+        Information about all frames including name, src, and index, or error description
+    """
+    page = await _get_page()
+    logger.info("Listing all frames on page")
+    try:
+        frames = page.frames
+        frame_info = []
+        for i, frame in enumerate(frames):
+            name = frame.name or "(no name)"
+            url = frame.url or "(no URL)"
+            is_main = " [MAIN FRAME]" if frame == page.main_frame else ""
+            frame_info.append(f"Frame {i}: name='{name}', url='{url}'{is_main}")
+
+        result = "\n".join(frame_info) if frame_info else "No frames found"
+        logger.info(f"Found {len(frames)} frames")
+        return result
+    except Exception as e:
+        error_msg = f"Failed to list frames: {str(e)}"
+        logger.warning(error_msg)
+        return error_msg
+
+@tool
+async def browser_get_frame_content(frame_selector: str) -> str:
+    """Get HTML content from a specific iframe.
+
+    Args:
+        frame_selector: Frame name, URL substring, or index number (e.g., "loginFrame", "auth.example.com", or "1")
+
+    Returns:
+        HTML content from the specified frame (first 5000 chars) or error description
+    """
+    page = await _get_page()
+    logger.info(f"Getting content from frame: {frame_selector}")
+    try:
+        frames = page.frames
+        target_frame = None
+
+        # Try to find frame by index first
+        try:
+            frame_index = int(frame_selector)
+            if 0 <= frame_index < len(frames):
+                target_frame = frames[frame_index]
+                logger.info(f"Found frame by index: {frame_index}")
+        except ValueError:
+            pass
+
+        # If not found by index, try by name or URL
+        if target_frame is None:
+            for frame in frames:
+                if (frame.name and frame_selector.lower() in frame.name.lower()) or \
+                   (frame.url and frame_selector.lower() in frame.url.lower()):
+                    target_frame = frame
+                    logger.info(f"Found frame by name/URL: {frame.name or frame.url}")
+                    break
+
+        if target_frame is None:
+            return f"Frame not found: '{frame_selector}'. Use browser_list_frames to see available frames."
+
+        content = await target_frame.content()
+        truncated = content[:5000]
+        logger.info(f"Retrieved frame content ({len(content)} chars, returning 5000)")
+        return truncated
+    except Exception as e:
+        error_msg = f"Failed to get frame content '{frame_selector}': {str(e)}"
+        logger.warning(error_msg)
+        return error_msg
+
+@tool
+async def browser_fill_in_frame(frame_selector: str, element_selector: str, text: str) -> str:
+    """Fill text into an input field inside an iframe.
+
+    Args:
+        frame_selector: Frame name, URL substring, or index number
+        element_selector: CSS selector for the input field within the frame
+        text: Text to fill
+
+    Returns:
+        Success message or error description
+    """
+    page = await _get_page()
+    logger.info(f"Filling element '{element_selector}' in frame '{frame_selector}'")
+    try:
+        frames = page.frames
+        target_frame = None
+
+        # Try to find frame by index first
+        try:
+            frame_index = int(frame_selector)
+            if 0 <= frame_index < len(frames):
+                target_frame = frames[frame_index]
+        except ValueError:
+            pass
+
+        # If not found by index, try by name or URL
+        if target_frame is None:
+            for frame in frames:
+                if (frame.name and frame_selector.lower() in frame.name.lower()) or \
+                   (frame.url and frame_selector.lower() in frame.url.lower()):
+                    target_frame = frame
+                    break
+
+        if target_frame is None:
+            return f"Frame not found: '{frame_selector}'. Use browser_list_frames to see available frames."
+
+        await target_frame.fill(element_selector, text, timeout=10000)
+        logger.info(f"Successfully filled '{element_selector}' in frame")
+        return f"Successfully filled element '{element_selector}' in frame '{frame_selector}'"
+    except Exception as e:
+        error_msg = f"Failed to fill element '{element_selector}' in frame '{frame_selector}': {str(e)}"
+        logger.warning(error_msg)
+        return error_msg
+
+@tool
+async def browser_click_in_frame(frame_selector: str, element_selector: str) -> str:
+    """Click an element inside an iframe.
+
+    Args:
+        frame_selector: Frame name, URL substring, or index number
+        element_selector: CSS selector or text for the element within the frame
+
+    Returns:
+        Success message or error description
+    """
+    page = await _get_page()
+    logger.info(f"Clicking element '{element_selector}' in frame '{frame_selector}'")
+    try:
+        frames = page.frames
+        target_frame = None
+
+        # Try to find frame by index first
+        try:
+            frame_index = int(frame_selector)
+            if 0 <= frame_index < len(frames):
+                target_frame = frames[frame_index]
+        except ValueError:
+            pass
+
+        # If not found by index, try by name or URL
+        if target_frame is None:
+            for frame in frames:
+                if (frame.name and frame_selector.lower() in frame.name.lower()) or \
+                   (frame.url and frame_selector.lower() in frame.url.lower()):
+                    target_frame = frame
+                    break
+
+        if target_frame is None:
+            return f"Frame not found: '{frame_selector}'. Use browser_list_frames to see available frames."
+
+        await target_frame.click(element_selector, timeout=10000)
+        logger.info(f"Successfully clicked '{element_selector}' in frame")
+        return f"Successfully clicked element '{element_selector}' in frame '{frame_selector}'"
+    except Exception as e:
+        error_msg = f"Failed to click element '{element_selector}' in frame '{frame_selector}': {str(e)}"
+        logger.warning(error_msg)
+        return error_msg
+
 # List of all browser tools
 BROWSER_TOOLS = [
     browser_navigate,
@@ -301,8 +481,13 @@ BROWSER_TOOLS = [
     browser_get_content,
     browser_get_text,
     browser_wait_for_selector,
+    browser_wait,
     browser_is_visible,
     browser_evaluate,
+    browser_list_frames,
+    browser_get_frame_content,
+    browser_fill_in_frame,
+    browser_click_in_frame,
 ]
 
 async def run_agent(task: str, debug: bool = False):
@@ -314,13 +499,12 @@ async def run_agent(task: str, debug: bool = False):
     # Clean up any stale processes/locks from previous runs
     cleanup_stale_playwright_processes()
 
-    # Set up output directory for screenshots
-    output_dir = os.path.join(os.path.dirname(__file__), "..", "logs", "screenshots")
-    os.makedirs(output_dir, exist_ok=True)
+    # Get screenshot directory for this run (created by setup_logger)
+    screenshot_dir = get_current_screenshot_dir()
 
     # Log environment state for debugging
     logger.info(f"Browser cache path: {os.environ.get('PLAYWRIGHT_BROWSERS_PATH', 'default')}")
-    logger.info(f"Output directory: {output_dir}")
+    logger.info(f"Output directory: {screenshot_dir}")
     logger.info(f"Working directory: {os.getcwd()}")
 
     playwright = None
@@ -329,8 +513,12 @@ async def run_agent(task: str, debug: bool = False):
         logger.info("Starting Playwright browser...")
         playwright = await async_playwright().start()
 
+        # Use HEADLESS env var to control headless mode (default: True for Cloud Run)
+        headless = os.getenv("HEADLESS", "true").lower() != "false"
+        logger.info(f"Launching browser with headless={headless}")
+
         _browser = await playwright.chromium.launch(
-            headless=True,
+            headless=headless,
             args=[
                 '--no-sandbox',
                 '--disable-dev-shm-usage',
@@ -354,7 +542,7 @@ async def run_agent(task: str, debug: bool = False):
 
         # Initialize Gemini LLM
         llm = ChatGoogleGenerativeAI(
-            model="gemini-2.0-flash",
+            model="gemini-2.5-flash",
             google_api_key=GOOGLE_API_KEY,
             temperature=0,
         )
@@ -416,6 +604,16 @@ async def run_agent(task: str, debug: bool = False):
                     if hasattr(last_message, 'content'):
                         content = last_message.content if isinstance(last_message.content, str) else str(last_message.content)
                         logger.info(f"Agent response: {content[:500]}...")
+
+            # Always extract and log the final report
+            logger.info("=" * 50)
+            logger.info("AGENT FINAL REPORT")
+            logger.info("=" * 50)
+            last_message = result["messages"][-1]
+            if hasattr(last_message, 'content'):
+                final_report = last_message.content if isinstance(last_message.content, str) else str(last_message.content)
+                logger.info(final_report)
+            logger.info("=" * 50)
 
             logger.info("Agent completed task")
             return result
@@ -521,32 +719,81 @@ async def find_and_register_for_ride(debug: bool = False):
     task = f"""
     Complete the following workflow to register for a cycling ride:
 
-    1. Navigate to {WCCC_URL}
-    2. Sign in with:
-       - Username/Email: {WCCC_USERNAME}
-       - Password: {WCCC_PASSWORD}
-    3. After successful login, click on the "Calendar" tab
-    4. Search the calendar for rides matching "{RIDE_SEARCH_TERM}"
-       - Look for rides from today ({today}) through the next 10 days ({end_date})
-       - Navigate through calendar dates as needed
-    5. For each matching ride found:
-       - Click on the ride to view details
-       - Check if you are already registered
-       - If NOT registered, click the register/sign-up button
-       - If ALREADY registered, note this and check the next matching ride
-    6. Take screenshots at key steps (calendar view, ride details, registration confirmation)
-    7. Report:
+    1. NAVIGATE TO HOMEPAGE:
+       - Navigate to {WCCC_URL}
+       - Take screenshot "01_homepage"
+
+    2. LOGIN:
+       - Click "Login" button using text=Login
+       - Take screenshot "02_login_page"
+       - The page will navigate to a login URL - this is NORMAL, not an error
+       - Fill TWO SEPARATE fields:
+         * User Name field: input[name='ctl00_ctl00_login_name']
+           Fill with: {WCCC_USERNAME}
+         * Password field: input[name='ctl00_ctl00_password']
+           Fill with: {WCCC_PASSWORD}
+       - Click submit button: #ctl00_ctl00_login_button (it's an <a> link, NOT an input!)
+       - Take screenshot "03_logged_in"
+       - VERIFY login success:
+         * Look for "Mike Woolley" in upper right (NOT "Member Login")
+         * Verify "Calendar" link is visible
+         * If login failed, retry up to 3 times
+
+    3. NAVIGATE TO CALENDAR:
+       - Click on the "Calendar" tab using text=Calendar
+       - Take screenshot "04_calendar"
+
+    4. FIND TARGET RIDE:
+       - Search the calendar for rides matching "{RIDE_SEARCH_TERM}"
+       - Look for rides from today ({today}) through {end_date}
+       - One month of the calendar is displayed at a time.
+       - You may need to search the current month and then navigate to the next month if {end_date} is in the next month
+       - To navigate to the next month click the link titled "Go to the next month"
+       - Use browser_get_content() to get page HTML and search for ride name
+       - Click on the ride using text matching: browser_click("text={RIDE_SEARCH_TERM}")
+       - Take screenshot "05_ride_details"
+
+    5. CHECK REGISTRATION STATUS:
+       - Use browser_is_visible("text=Cancel Registration") to check status
+       - If "Cancel Registration" button EXISTS → You ARE already registered
+       - If "Cancel Registration" button DOES NOT exist → You are NOT registered
+       - DO NOT rely on text like "You are registered" - only check for the button!
+
+    6. COMPLETE REGISTRATION (if not already registered):
+       - There are TWO Register buttons - you MUST click the correct one!
+       - TOP button (WRONG): #ctl00_ctl00_user_actions_register_button - DO NOT CLICK
+       - BOTTOM button (CORRECT): #ctl00_ctl00_detail_registration_register_button - CLICK THIS
+       - Click: browser_click("#ctl00_ctl00_detail_registration_register_button")
+       - Take screenshot "06_registration_page1"
+
+       REGISTRATION FLOW:
+       - Step 1 - Who's Attending: always click the Next button
+         * Take screenshot "07_after_next"
+       - Step 2 - Complete Registration:
+         * Take screenshot to see the current page state
+         * Click "Complete Registration" button using: #ctl00_ctl00_done_button_top
+         * browser_click("#ctl00_ctl00_done_button_top")
+         * Take screenshot "08_after_complete_registration"
+         * Look for popup saying "Your registration has been received" (may disappear quickly)
+         * You should be redirected back to the Ride details page
+
+       VERIFY SUCCESS:
+       - Check for "Cancel Registration" button using browser_is_visible("text=Cancel Registration")
+       - If "Cancel Registration" button is now visible → registration successful!
+       - If it isn't visible, take a screenshot and examine what page you're on
+       - If registration failed, retry the entire registration flow
+       - Take final screenshot showing "Cancel Registration" button
+
+    7. REPORT:
        - Which rides were found
        - Your registration status for each
        - Which ride (if any) you registered for
 
     IMPORTANT:
-    - If login fails, retry up to 3 times
+    - Take screenshots AFTER EVERY page load or navigation
+    - If any action fails, take a screenshot and retry up to 3 times
     - If no matching rides are found, report this and stop
     - If all matching rides are already registered, report this
-    - Take screenshots to document your progress
-
-    Be thorough in searching the calendar - check multiple days within the date range.
     """
 
     result = await run_agent(task, debug=debug)

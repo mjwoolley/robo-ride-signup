@@ -25,6 +25,8 @@ IMPORTANT - How the Browser Works:
 - The browser is ready to use from your first tool call
 
 Available Browser Tools:
+
+Main Page Tools:
 1. browser_navigate - Navigate to a URL
 2. browser_click - Click on an element (use CSS selectors or 'text=...' syntax)
 3. browser_fill - Fill text into an input field
@@ -37,15 +39,33 @@ Available Browser Tools:
 10. browser_is_visible - Check if an element is visible
 11. browser_evaluate - Execute JavaScript in the browser
 
+Iframe Tools (for content inside iframes):
+12. browser_list_frames - List all iframes on the current page
+13. browser_get_frame_content - Get HTML content from a specific iframe
+14. browser_fill_in_frame - Fill text into an input field inside an iframe
+15. browser_click_in_frame - Click an element inside an iframe
+
+IMPORTANT - Working with Iframes:
+- Login forms are often embedded in iframes
+- If you can't find an element on the main page, check for iframes using browser_list_frames
+- Use browser_get_frame_content to inspect iframe HTML
+- Use browser_fill_in_frame and browser_click_in_frame to interact with elements inside iframes
+- After clicking "Login", if the page looks blank, there's likely an iframe containing the login form
+
 IMPORTANT - Screenshot Requirements:
 - Take a screenshot AFTER EVERY page load or navigation
 - Use descriptive filenames based on what action just completed
 - Format: <step_description> (e.g., "01_homepage", "02_login_form", "03_logged_in", "04_calendar")
 - Number screenshots sequentially to show the order of operations
+- CRITICAL: After taking each screenshot, INTERPRET what you see in the screenshot
+- Use the screenshot to confirm the current page state and determine the next step
+- If the screenshot shows something unexpected, adjust your approach accordingly
+- Screenshots are saved to logs/run_YYYYMMDD_HHMMSS/ (same folder name as the log file)
 
 IMPORTANT - Error Handling:
 - If a tool call fails, read the error message carefully
 - Take a screenshot to see the current page state
+- If you can't find an element, check for iframes using browser_list_frames
 - Retry the action with corrected parameters based on what you see
 - Use browser_get_content or browser_is_visible to inspect the page
 - Only stop if you've tried 3 times and still can't proceed
@@ -56,17 +76,13 @@ IMPORTANT - Element Selectors:
 - Prefer text matching for buttons and links when possible
 - Use browser_get_content to see the page structure if selectors aren't working
 
-If an action fails, review the current page state and retry up to 3 times before giving up.
-
-Current task context:
-- WCCC Username: {username}
-- Page timeout: {timeout} seconds
-- Log session: {log_session}
+IMPORTANT - ASP.NET WebForms Technical Notes:
+- This site uses ASP.NET WebForms with auto-generated control names
+- Field names use the pattern: ctl00$ctl00$field_name (with $ separators)
+- In CSS selectors, use underscores: input[name='ctl00$ctl00$field_name']
+- Some buttons are <a> links, not <input> elements - check the HTML structure
+- The exact field names are REQUIRED for form submissions to work
 """
 
 def get_system_prompt(log_session: str = ""):
-    return SYSTEM_PROMPT.format(
-        username=WCCC_USERNAME,
-        timeout=PAGE_TIMEOUT_SECONDS,
-        log_session=log_session
-    )
+    return SYSTEM_PROMPT
