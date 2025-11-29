@@ -30,15 +30,17 @@ async def run_once():
         logger.info("Agent run completed successfully")
         return result
     except Exception as e:
-        logger.error(f"Agent run failed: {e}")
-        raise
+        logger.error(f"Agent run failed: {e}", exc_info=True)
+        sys.exit(1)  # Exit with error code for Cloud Run to detect
 
 def scheduled_job():
     """Wrapper to run async agent in scheduler."""
     try:
         asyncio.run(run_once())
     except Exception as e:
-        logger.error(f"Scheduled job failed: {e}")
+        logger.error(f"Scheduled job failed: {e}", exc_info=True)
+        # Continue running - scheduler will retry on next schedule
+        # This allows transient failures to self-recover
 
 def run_scheduler():
     """Run the agent on an hourly schedule."""
@@ -87,4 +89,11 @@ Examples:
     if args.schedule:
         run_scheduler()
     else:
-        asyncio.run(run_once())
+        try:
+            asyncio.run(run_once())
+            sys.exit(0)  # Explicit success
+        except SystemExit:
+            raise  # Let sys.exit() codes propagate
+        except Exception as e:
+            logger.error(f"Unexpected error: {e}", exc_info=True)
+            sys.exit(1)

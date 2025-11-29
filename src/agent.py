@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+import subprocess
 from typing import Any
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.tools import tool
@@ -13,25 +14,89 @@ from .logger import setup_logger, get_screenshot_path, log_screenshot, get_curre
 
 logger = setup_logger()
 
+def cleanup_stale_playwright_processes():
+    """Kill any stale Playwright/Chrome processes and remove lock files.
+
+    Uses aggressive pkill -9 approach since this is the only service in the container.
+    """
+    logger.info("Cleaning up stale Playwright processes...")
+
+    # Kill any existing chrome/playwright processes (aggressive cleanup approved)
+    try:
+        subprocess.run(["pkill", "-9", "chrome"], stderr=subprocess.DEVNULL)
+        subprocess.run(["pkill", "-9", "chromium"], stderr=subprocess.DEVNULL)
+        subprocess.run(["pkill", "-9", "node"], stderr=subprocess.DEVNULL)
+        logger.info("Killed stale browser processes")
+    except Exception as e:
+        logger.warning(f"Error killing processes: {e}")
+
+    # Remove lock files
+    lock_dirs = [
+        "/root/.cache/ms-playwright",
+        "/tmp/.ms-playwright",
+        os.path.expanduser("~/.config/chromium")
+    ]
+
+    for lock_dir in lock_dirs:
+        if os.path.exists(lock_dir):
+            try:
+                # Find and remove .lock files
+                subprocess.run(["find", lock_dir, "-name", "*.lock", "-delete"],
+                               stderr=subprocess.DEVNULL)
+                logger.info(f"Cleaned lock files from {lock_dir}")
+            except Exception as e:
+                logger.warning(f"Error cleaning {lock_dir}: {e}")
+
 async def run_agent(task: str, debug: bool = False):
     """Run the agent with a given task."""
     logger.info(f"Starting agent with task: {task}")
 
+    # Clean up any stale processes/locks from previous runs
+    cleanup_stale_playwright_processes()
+
     # Set up MCP server parameters for Playwright
     output_dir = os.path.join(os.path.dirname(__file__), "..", "logs", "screenshots")
+
+    # Pass Chromium flags for Cloud Run compatibility
+    chromium_flags = os.environ.get("CHROMIUM_FLAGS", "--no-sandbox --disable-dev-shm-usage --disable-gpu --disable-setuid-sandbox")
+
     server_params = StdioServerParameters(
         command="npx",
-        args=["@playwright/mcp", "--browser", "chromium", "--output-dir", output_dir],
+        args=["@playwright/mcp", "--browser", "chromium", "--headless", "--output-dir", output_dir],
+        env={
+            **os.environ,
+            # Try to pass Chromium flags via environment variable
+            # This may or may not work depending on @playwright/mcp implementation
+            "PLAYWRIGHT_CHROMIUM_ARGS": chromium_flags,
+        }
     )
 
-    async with stdio_client(server_params) as (read, write):
-        async with ClientSession(read, write) as session:
-            # Initialize the session
-            await session.initialize()
+    # Log environment state for debugging
+    logger.info(f"Browser cache path: {os.environ.get('PLAYWRIGHT_BROWSERS_PATH', 'default')}")
+    logger.info(f"Output directory: {output_dir}")
+    logger.info(f"Working directory: {os.getcwd()}")
+    logger.info(f"Chromium flags: {chromium_flags}")
 
-            # Get available tools from MCP
-            tools_result = await session.list_tools()
-            logger.info(f"Loaded {len(tools_result.tools)} tools from Playwright MCP")
+    logger.info(f"Starting Playwright MCP server with command: {server_params.command} {' '.join(server_params.args)}")
+
+    try:
+        async with stdio_client(server_params) as (read, write):
+            logger.info("Playwright MCP server started successfully")
+
+            async with ClientSession(read, write) as session:
+                logger.info("MCP ClientSession created")
+
+                # Initialize the session
+                await session.initialize()
+                logger.info("MCP session initialized")
+
+                # Get available tools from MCP
+                tools_result = await session.list_tools()
+                logger.info(f"Loaded {len(tools_result.tools)} tools from Playwright MCP")
+
+                if not tools_result.tools:
+                    logger.error("No tools loaded from Playwright MCP!")
+                    raise RuntimeError("Playwright MCP returned no tools")
 
             # Create tool functions dynamically
             tools = []
@@ -51,11 +116,19 @@ async def run_agent(task: str, debug: bool = False):
                         """Execute the MCP tool with JSON arguments."""
                         try:
                             args = json.loads(arguments) if arguments else {}
-                        except json.JSONDecodeError:
+                        except json.JSONDecodeError as e:
+                            logger.error(f"Failed to parse tool arguments: {arguments}, error: {e}")
                             args = {}
 
-                        logger.debug(f"Calling tool {name} with args: {args}")
-                        result = await session.call_tool(name, args)
+                        # Log at INFO level for better troubleshooting (changed from DEBUG)
+                        logger.info(f"Calling tool {name} with args: {args}")
+
+                        try:
+                            result = await session.call_tool(name, args)
+                            logger.info(f"Tool {name} completed successfully")
+                        except Exception as e:
+                            logger.error(f"Tool {name} failed: {e}", exc_info=True)
+                            raise
 
                         # Extract text content from result
                         if result.content:
@@ -150,6 +223,21 @@ async def run_agent(task: str, debug: bool = False):
             except Exception as e:
                 logger.error(f"Agent error: {e}")
                 raise
+            finally:
+                # Always close the browser to prevent "browser already in use" errors
+                logger.info("Attempting to close browser...")
+                try:
+                    await session.call_tool("browser_close", {})
+                    logger.info("Browser closed successfully")
+                except Exception as e:
+                    logger.error(f"Error closing browser: {e}", exc_info=True)
+                    # Don't raise - let session context manager handle cleanup
+    except asyncio.TimeoutError:
+        logger.error("Agent timed out after 5 minutes")
+        raise
+    except Exception as e:
+        logger.error(f"Failed to start or run Playwright MCP: {e}", exc_info=True)
+        raise
 
 async def test_agent():
     """Test that the agent can start and take a screenshot."""

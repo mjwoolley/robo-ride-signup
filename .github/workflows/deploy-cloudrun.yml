@@ -27,25 +27,25 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
-      - name: Configure Docker for Artifact Registry
+      - name: Configure Docker for GCR
         run: |
-          gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
+          gcloud auth configure-docker gcr.io
 
       - name: Build Docker image
         run: |
-          docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.JOB_NAME }}:${{ github.sha }} .
-          docker tag ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.JOB_NAME }}:${{ github.sha }} \
-                     ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.JOB_NAME }}:latest
+          docker build --platform linux/amd64 -t gcr.io/${{ env.PROJECT_ID }}/${{ env.JOB_NAME }}:${{ github.sha }} .
+          docker tag gcr.io/${{ env.PROJECT_ID }}/${{ env.JOB_NAME }}:${{ github.sha }} \
+                     gcr.io/${{ env.PROJECT_ID }}/${{ env.JOB_NAME }}:latest
 
       - name: Push Docker image
         run: |
-          docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.JOB_NAME }}:${{ github.sha }}
-          docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.JOB_NAME }}:latest
+          docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.JOB_NAME }}:${{ github.sha }}
+          docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.JOB_NAME }}:latest
 
       - name: Deploy to Cloud Run Jobs
         run: |
           gcloud run jobs update ${{ env.JOB_NAME }} \
-            --image ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.JOB_NAME }}:${{ github.sha }} \
+            --image gcr.io/${{ env.PROJECT_ID }}/${{ env.JOB_NAME }}:${{ github.sha }} \
             --region ${{ env.REGION }} \
             --set-env-vars "GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}" \
             --set-env-vars "LANGSMITH_API_KEY=${{ secrets.LANGSMITH_API_KEY }}" \
