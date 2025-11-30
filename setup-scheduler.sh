@@ -17,7 +17,7 @@ gcloud scheduler jobs create http ${JOB_NAME}-trigger \
   --time-zone="$TIMEZONE" \
   --uri="https://$REGION-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/$PROJECT_ID/jobs/$JOB_NAME:run" \
   --http-method=POST \
-  --oauth-service-account-email="${PROJECT_ID}@appspot.gserviceaccount.com" \
+  --oauth-service-account-email="scheduler-invoker@${PROJECT_ID}.iam.gserviceaccount.com" \
   --project=$PROJECT_ID
 
 echo "✅ Cloud Scheduler created!"
