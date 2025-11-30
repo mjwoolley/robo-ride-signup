@@ -12,6 +12,13 @@ WCCC_PASSWORD = os.getenv("WCCC_PASSWORD")
 PAGE_TIMEOUT_SECONDS = int(os.getenv("PAGE_TIMEOUT_SECONDS", "15"))
 RIDE_SEARCH_TERM = os.getenv("RIDE_SEARCH_TERM", "B/B- Ride, Jenn")
 
+# Email configuration
+RESULTS_EMAIL = os.getenv("RESULTS_EMAIL", "mwoolley2@gmail.com")
+SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SMTP_USERNAME = os.getenv("SMTP_USERNAME")  # Gmail address
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")  # Gmail app password
+
 # System prompt for the agent
 SYSTEM_PROMPT = """You are an automation agent that helps sign up for cycling rides on the WCCC website.
 

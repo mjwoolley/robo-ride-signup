@@ -55,6 +55,11 @@ jobs:
             --set-env-vars "WCCC_PASSWORD=${{ secrets.WCCC_PASSWORD }}" \
             --set-env-vars "RIDE_SEARCH_TERM=${{ secrets.RIDE_SEARCH_TERM }}" \
             --set-env-vars "PAGE_TIMEOUT_SECONDS=30" \
+            --set-env-vars "RESULTS_EMAIL=${{ secrets.RESULTS_EMAIL }}" \
+            --set-env-vars "SMTP_SERVER=${{ secrets.SMTP_SERVER }}" \
+            --set-env-vars "SMTP_PORT=${{ secrets.SMTP_PORT }}" \
+            --set-env-vars "SMTP_USERNAME=${{ secrets.SMTP_USERNAME }}" \
+            --set-env-vars "SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}" \
             --memory 2Gi \
             --cpu 1 \
             --task-timeout 10m \

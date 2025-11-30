@@ -1,13 +1,21 @@
 import asyncio
 import os
 import subprocess
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from datetime import datetime
 from typing import Any, Optional
 from playwright.async_api import async_playwright, Browser, Page, BrowserContext
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.tools import tool
 from langgraph.prebuilt import create_react_agent
 
-from .config import GOOGLE_API_KEY, WCCC_USERNAME, WCCC_PASSWORD, RIDE_SEARCH_TERM, get_system_prompt
+from .config import (
+    GOOGLE_API_KEY, WCCC_USERNAME, WCCC_PASSWORD, RIDE_SEARCH_TERM,
+    RESULTS_EMAIL, SMTP_SERVER, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD,
+    get_system_prompt
+)
 from .logger import setup_logger, get_screenshot_path, log_screenshot, get_current_log_session, get_current_screenshot_dir
 
 logger = setup_logger()
@@ -502,6 +510,48 @@ async def browser_click_in_frame(frame_selector: str, element_selector: str) -> 
         logger.warning(error_msg)
         return error_msg
 
+def send_email_report(report_text: str, success: bool = True):
+    """Send the agent final report via email.
+
+    Args:
+        report_text: The final report text to send
+        success: Whether the agent completed successfully
+    """
+    # Skip if SMTP not configured
+    if not SMTP_USERNAME or not SMTP_PASSWORD:
+        logger.warning("SMTP credentials not configured - skipping email report")
+        return
+
+    try:
+        # Create message
+        msg = MIMEMultipart()
+        msg['From'] = SMTP_USERNAME
+        msg['To'] = RESULTS_EMAIL
+        msg['Subject'] = f"WCCC Ride Signup - {'Success' if success else 'Failed'} - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+
+        # Create email body
+        body = f"""WCCC Ride Signup Agent Report
+{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+
+{report_text}
+
+---
+This is an automated message from the WCCC Ride Signup Agent.
+"""
+
+        msg.attach(MIMEText(body, 'plain'))
+
+        # Send email
+        logger.info(f"Sending email report to {RESULTS_EMAIL}...")
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            server.starttls()
+            server.login(SMTP_USERNAME, SMTP_PASSWORD)
+            server.send_message(msg)
+
+        logger.info("Email report sent successfully")
+    except Exception as e:
+        logger.error(f"Failed to send email report: {e}")
+
 # List of all browser tools
 BROWSER_TOOLS = [
     browser_navigate,
@@ -638,22 +688,44 @@ async def run_agent(task: str, debug: bool = False):
                         logger.info(f"Agent response: {content[:500]}...")
 
             # Always extract and log the final report
-            logger.info("=" * 50)
+            logger.info("\n" + "=" * 50)
             logger.info("AGENT FINAL REPORT")
             logger.info("=" * 50)
             last_message = result["messages"][-1]
+            report_text = ""
             if hasattr(last_message, 'content'):
-                final_report = last_message.content if isinstance(last_message.content, str) else str(last_message.content)
-                logger.info(final_report)
-            logger.info("=" * 50)
+                content = last_message.content
+
+                # Extract text from content (handle both string and list formats)
+                if isinstance(content, str):
+                    report_text = content
+                elif isinstance(content, list):
+                    # Content is a list of dicts with 'type' and 'text' keys
+                    report_text = '\n'.join(item.get('text', '') for item in content if isinstance(item, dict) and item.get('type') == 'text')
+                else:
+                    report_text = str(content)
+
+                # Format with bullets for each line
+                lines = report_text.strip().split('\n')
+                for line in lines:
+                    if line.strip():
+                        logger.info(f"  • {line.strip()}")
+            logger.info("=" * 50 + "\n")
+
+            # Send email report
+            send_email_report(report_text, success=True)
 
             logger.info("Agent completed task")
             return result
         except Exception as e:
             logger.error(f"Agent error: {e}")
+            # Send failure email
+            send_email_report(f"Agent failed with error: {str(e)}", success=False)
             raise
     except Exception as e:
         logger.error(f"Failed to start or run browser: {e}", exc_info=True)
+        # Send failure email
+        send_email_report(f"Failed to start or run browser: {str(e)}", success=False)
         raise
     finally:
         # Clean up browser resources
@@ -817,9 +889,10 @@ async def find_and_register_for_ride(debug: bool = False):
        - Take final screenshot showing "Cancel Registration" button
 
     7. REPORT:
-       - Which rides were found
-       - Your registration status for each
-       - Which ride (if any) you registered for
+       - Which rides were found including the name and date(s) of each ride
+       - Your registration status for of those dates
+       - Which ride (if any) you registered for including date
+       - If registration failed then indicate that
 
     IMPORTANT:
     - Take screenshots AFTER EVERY page load or navigation
